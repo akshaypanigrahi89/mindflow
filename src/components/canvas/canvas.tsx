@@ -35,21 +35,27 @@ export function Canvas() {
   const edges = useCanvasStore((s) => s.edges)
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds)
   const selectedEdgeIds = useCanvasStore((s) => s.selectedEdgeIds)
+  const hiddenNodeIds = useCanvasStore((s) => s.hiddenNodeIds)
   const moveNode = useCanvasStore((s) => s.moveNode)
   const resizeNode = useCanvasStore((s) => s.resizeNode)
   const removeNode = useCanvasStore((s) => s.removeNode)
   const clearSelection = useCanvasStore((s) => s.clearSelection)
   const addEdge = useCanvasStore((s) => s.addEdge)
   const addNode = useCanvasStore((s) => s.addNode)
+  const toggleCollapse = useCanvasStore((s) => s.toggleCollapse)
   const duplicateNodes = useCanvasStore((s) => s.duplicateNodes)
   const undo = useCanvasStore((s) => s.undo)
   const redo = useCanvasStore((s) => s.redo)
   selectedNodeIdsRef.current = selectedNodeIds
   nodesRef.current = nodes
 
+  const visibleNodes = useMemo(() => nodes.filter((n) => !hiddenNodeIds.includes(n.id)), [nodes, hiddenNodeIds])
+  const hiddenSet = useMemo(() => new Set(hiddenNodeIds), [hiddenNodeIds])
+
+  // Convert store nodes to React Flow nodes (only visible ones)
   const rfNodes = useMemo(
     () =>
-      nodes.map((n) => ({
+      visibleNodes.map((n) => ({
         id: n.id,
         type: 'mindMapNode' as const,
         position: { x: n.x, y: n.y },
@@ -77,22 +83,24 @@ export function Canvas() {
 
   const rfEdges = useMemo(
     () =>
-      edges.map((e) => ({
-        id: e.id,
-        source: e.sourceId,
-        target: e.targetId,
-        type: e.type,
-        animated: e.animated,
-        style: {
-          stroke: e.color,
-          strokeWidth: 2,
-          strokeDasharray:
-            e.style === 'dashed' ? '5,5' : e.style === 'dotted' ? '2,2' : undefined,
-        },
-        label: e.label || undefined,
-        selected: selectedEdgeIds.includes(e.id),
-      })),
-    [edges, selectedEdgeIds],
+      edges
+        .filter((e) => !hiddenSet.has(e.sourceId) && !hiddenSet.has(e.targetId))
+        .map((e) => ({
+          id: e.id,
+          source: e.sourceId,
+          target: e.targetId,
+          type: e.type,
+          animated: e.animated,
+          style: {
+            stroke: e.color,
+            strokeWidth: 2,
+            strokeDasharray:
+              e.style === 'dashed' ? '5,5' : e.style === 'dotted' ? '2,2' : undefined,
+          },
+          label: e.label || undefined,
+          selected: selectedEdgeIds.includes(e.id),
+        })),
+    [edges, selectedEdgeIds, hiddenSet],
   )
 
   const onNodeDrag = useCallback<OnNodeDrag>(
@@ -231,6 +239,9 @@ export function Canvas() {
         const selected = selectedNodeIdsRef.current
         const parentNode = currentNodes.find((n) => selected.includes(n.id))
         if (parentNode) {
+          if (parentNode.collapsed) {
+            toggleCollapse(parentNode.id)
+          }
           const siblings = currentNodes.filter((n) => n.parentId === parentNode.id)
           addNode({
             title: 'Child Node',

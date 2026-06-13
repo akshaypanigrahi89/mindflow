@@ -101,7 +101,7 @@ export function FloatingToolbar() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: 0.15, ease: 'easeOut' }}
-          className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border/50 bg-background/80 px-2 py-1.5 shadow-lg backdrop-blur-xl"
+          className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 shadow-sm dark:border-neutral-600 dark:bg-neutral-800"
         >
           {firstSelected && (
             <>

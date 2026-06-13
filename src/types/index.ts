@@ -161,4 +161,5 @@ export interface CanvasSnapshot {
   nodes: Node[]
   edges: Edge[]
   viewport: Viewport
+  hiddenNodeIds: string[]
 }

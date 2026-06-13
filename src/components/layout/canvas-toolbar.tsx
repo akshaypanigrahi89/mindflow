@@ -100,7 +100,7 @@ export function CanvasToolbar() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="fixed left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border/50 bg-background/80 px-2 py-1.5 shadow-lg backdrop-blur-xl"
+      className="fixed left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 shadow-sm dark:border-neutral-600 dark:bg-neutral-800"
     >
       <Button
         variant="ghost"

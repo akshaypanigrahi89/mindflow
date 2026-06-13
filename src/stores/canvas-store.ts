@@ -11,6 +11,7 @@ export interface CanvasStore {
   viewport: Viewport
   selectedNodeIds: string[]
   selectedEdgeIds: string[]
+  hiddenNodeIds: string[]
   interactionMode: InteractionMode
   isPanning: boolean
   isDragging: boolean
@@ -61,6 +62,11 @@ export interface CanvasStore {
   loadBoard: (nodes: Node[], edges: Edge[]) => void
 }
 
+function getDescendantIds(nodeId: string, nodes: Node[]): string[] {
+  const children = nodes.filter((n) => n.parentId === nodeId)
+  return children.flatMap((child) => [child.id, ...getDescendantIds(child.id, nodes)])
+}
+
 function generateEdgeId(): string {
   return `edge_${generateId()}`
 }
@@ -73,6 +79,7 @@ export const useCanvasStore = create<CanvasStore>()(
       viewport: { x: 0, y: 0, zoom: ZOOM_DEFAULT },
       selectedNodeIds: [],
       selectedEdgeIds: [],
+      hiddenNodeIds: [],
       interactionMode: 'select' as InteractionMode,
       isPanning: false,
       isDragging: false,
@@ -109,6 +116,12 @@ export const useCanvasStore = create<CanvasStore>()(
         }
         set((draft) => {
           draft.nodes.push(newNode)
+          if (newNode.parentId) {
+            const parent = draft.nodes.find((n) => n.id === newNode.parentId)
+            if (parent?.collapsed) {
+              draft.hiddenNodeIds.push(newNode.id)
+            }
+          }
         })
         return newNode
       },
@@ -121,13 +134,15 @@ export const useCanvasStore = create<CanvasStore>()(
       }),
 
       removeNode: (id) => set((draft) => {
-        draft.nodes = draft.nodes.filter((n) => n.id !== id)
-        draft.edges = draft.edges.filter((e) => e.sourceId !== id && e.targetId !== id)
-        draft.selectedNodeIds = draft.selectedNodeIds.filter((nid) => nid !== id)
+        const toRemove = [id, ...getDescendantIds(id, draft.nodes)]
+        draft.nodes = draft.nodes.filter((n) => !toRemove.includes(n.id))
+        draft.edges = draft.edges.filter((e) => !toRemove.includes(e.sourceId) && !toRemove.includes(e.targetId))
+        draft.selectedNodeIds = draft.selectedNodeIds.filter((nid) => !toRemove.includes(nid))
         draft.selectedEdgeIds = draft.selectedEdgeIds.filter((eid) => {
           const edge = draft.edges.find((e) => e.id === eid)
           return edge !== undefined
         })
+        draft.hiddenNodeIds = draft.hiddenNodeIds.filter((hid) => !toRemove.includes(hid))
       }),
 
       moveNode: (id, x, y) => set((draft) => {
@@ -168,8 +183,17 @@ export const useCanvasStore = create<CanvasStore>()(
 
       toggleCollapse: (id) => set((draft) => {
         const node = draft.nodes.find((n) => n.id === id)
-        if (node) {
-          node.collapsed = !node.collapsed
+        if (!node) return
+        node.collapsed = !node.collapsed
+        const descendants = getDescendantIds(id, draft.nodes)
+        if (node.collapsed) {
+          for (const did of descendants) {
+            if (!draft.hiddenNodeIds.includes(did)) {
+              draft.hiddenNodeIds.push(did)
+            }
+          }
+        } else {
+          draft.hiddenNodeIds = draft.hiddenNodeIds.filter((hid) => !descendants.includes(hid))
         }
       }),
 
@@ -330,6 +354,7 @@ export const useCanvasStore = create<CanvasStore>()(
           nodes: JSON.parse(JSON.stringify(state.nodes)),
           edges: JSON.parse(JSON.stringify(state.edges)),
           viewport: { ...state.viewport },
+          hiddenNodeIds: [...state.hiddenNodeIds],
         }
         set((draft) => {
           draft.undoStack.push(snapshot)
@@ -348,6 +373,7 @@ export const useCanvasStore = create<CanvasStore>()(
           nodes: JSON.parse(JSON.stringify(state.nodes)),
           edges: JSON.parse(JSON.stringify(state.edges)),
           viewport: { ...state.viewport },
+          hiddenNodeIds: [...state.hiddenNodeIds],
         }
         set((draft) => {
           draft.redoStack.push(currentSnapshot)
@@ -355,6 +381,7 @@ export const useCanvasStore = create<CanvasStore>()(
           draft.nodes = JSON.parse(JSON.stringify(snapshot.nodes))
           draft.edges = JSON.parse(JSON.stringify(snapshot.edges))
           draft.viewport = { ...snapshot.viewport }
+          draft.hiddenNodeIds = [...snapshot.hiddenNodeIds]
           draft.selectedNodeIds = []
           draft.selectedEdgeIds = []
         })
@@ -368,6 +395,7 @@ export const useCanvasStore = create<CanvasStore>()(
           nodes: JSON.parse(JSON.stringify(state.nodes)),
           edges: JSON.parse(JSON.stringify(state.edges)),
           viewport: { ...state.viewport },
+          hiddenNodeIds: [...state.hiddenNodeIds],
         }
         set((draft) => {
           draft.undoStack.push(currentSnapshot)
@@ -375,6 +403,7 @@ export const useCanvasStore = create<CanvasStore>()(
           draft.nodes = JSON.parse(JSON.stringify(snapshot.nodes))
           draft.edges = JSON.parse(JSON.stringify(snapshot.edges))
           draft.viewport = { ...snapshot.viewport }
+          draft.hiddenNodeIds = [...snapshot.hiddenNodeIds]
           draft.selectedNodeIds = []
           draft.selectedEdgeIds = []
         })
@@ -403,6 +432,7 @@ export const useCanvasStore = create<CanvasStore>()(
         draft.viewport = { x: 0, y: 0, zoom: ZOOM_DEFAULT }
         draft.selectedNodeIds = []
         draft.selectedEdgeIds = []
+        draft.hiddenNodeIds = []
         draft.boardId = null
         draft.boardTitle = ''
         draft.undoStack = []
@@ -414,6 +444,7 @@ export const useCanvasStore = create<CanvasStore>()(
         draft.edges = edges
         draft.selectedNodeIds = []
         draft.selectedEdgeIds = []
+        draft.hiddenNodeIds = []
         draft.undoStack = []
         draft.redoStack = []
       }),

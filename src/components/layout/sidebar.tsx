@@ -84,7 +84,7 @@ export function Sidebar() {
             animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="fixed left-0 top-0 z-40 flex h-full flex-col border-r border-border/50 bg-background/80 backdrop-blur-xl overflow-hidden"
+            className="fixed left-0 top-0 z-40 flex h-full flex-col border-r border-gray-300 bg-white dark:border-neutral-600 dark:bg-neutral-900 overflow-hidden"
           >
             <div className="flex shrink-0 items-center gap-2 px-4 py-3">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
